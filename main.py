@@ -16,13 +16,13 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 class Question(BaseModel):
     question: str
 
-# --- Загружаем данные ---
+# --- Loading data ---
 with open("data.txt", "r", encoding="utf-8") as f:
     text = f.read()
 
 chunks = [c.strip() for c in text.split("\n") if c.strip()]
 
-# --- Делаем embeddings ---
+# --- embeddings ---
 embeddings = []
 for chunk in chunks:
     if chunk.strip():
@@ -32,7 +32,7 @@ for chunk in chunks:
         )
         embeddings.append(emb.data[0].embedding)
 
-# --- FAISS индекс ---
+# --- FAISS ---
 dimension = len(embeddings[0])
 index = faiss.IndexFlatL2(dimension)
 index.add(np.array(embeddings))
@@ -40,18 +40,18 @@ index.add(np.array(embeddings))
 # --- API ---
 @app.post("/ask")
 def ask_ai(q: Question):
-    # embedding вопроса
+    # embedding question
     q_emb = client.embeddings.create(
         model="text-embedding-3-small",
         input=q.question
     ).data[0].embedding
 
-    # поиск
+    # search
     D, I = index.search(np.array([q_emb]), k=2)
 
     context = "\n".join([chunks[i] for i in I[0]])
 
-    # ответ
+    # answer
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
